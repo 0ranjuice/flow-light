@@ -10,10 +10,10 @@ def get_color_for_point(point_coords, list_of_point_centers, list_of_colors):
     points of the same 2D plane.
     :param point_coords: coordinates for the point for which we want to
     calculate its color
-    :param list_of_point_centers: list of point coodinates
+    :param list_of_point_centers: list of point coordinates
     [[x1, y1], ..., [xN, yMN] of the of the aforementioned colors
     :param list_of_colors:  list of RGB color values [[R1, G1, B1], ...,
-    [RN, GN, BN]] for the N points in the 2D plane (see prev atribute)
+    [RN, GN, BN]] for the N points in the 2D plane (see prev attribute)
     :return: interpolated RGB color for the input point (1st arg)
     """
     color = np.array([0.0, 0.0, 0.0])
@@ -40,7 +40,7 @@ def create_2d_color_map(list_of_points, list_of_colors, height, width):
     create_2d_color_map() creates a colormap by interpolating RGB color values,
     given a list of colors to be defined on particular points of the 2D
     plane.
-    :param list_of_points: list of point coodinates
+    :param list_of_points: list of point coordinates
     [[x1, y1], ..., [xN, yM]] of the of the aforementioned colors
     :param list_of_colors: list of RGB color values [[R1, G1, B1], ...,
     [RN, GN, BN]] for the N points in the 2D plane (see prev attribute)

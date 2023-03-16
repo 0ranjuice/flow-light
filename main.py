@@ -142,8 +142,8 @@ def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
             seg_len = len(x)
 
             # extract features
-            # We are using the signal length as mid term window and step,
-            # in order to guarantee a mid-term feature sequence of len 1
+            # We are using the signal length as midterm window and step,
+            # in order to guarantee a midterm feature sequence of len 1
             [mt_f, _, _] = mF(x, fs, seg_len, seg_len, round(fs * st_win),
                               round(fs * st_step))
             fv = (mt_f[:, 0] - mu) / std
@@ -224,7 +224,7 @@ def parse_arguments():
                                   type=float,
                                 choices=[0.25, 0.5, 0.75, 1],
                                   default=1, help="Recording block size")
-    record_analyze.add_argument("-fs", "--samplingrate", type=int,
+    record_analyze.add_argument("-fs", "--sampling-rate", type=int,
                                   choices=[4000, 8000, 16000, 32000, 44100],
                                   default=8000, help="Recording block size")
     return record_analyze.parse_args()
