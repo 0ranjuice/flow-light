@@ -11,7 +11,7 @@ def get_color_for_point(point_coords, list_of_point_centers, list_of_colors):
     :param point_coords: coordinates for the point for which we want to
     calculate its color
     :param list_of_point_centers: list of point coordinates
-    [[x1, y1], ..., [xN, yMN] of the of the aforementioned colors
+    [[x1, y1], ..., [xN, yM] of the of the aforementioned colors
     :param list_of_colors:  list of RGB color values [[R1, G1, B1], ...,
     [RN, GN, BN]] for the N points in the 2D plane (see prev attribute)
     :return: interpolated RGB color for the input point (1st arg)
