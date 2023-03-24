@@ -1,9 +1,3 @@
-"""
-This demo records sound and - when music is detected - it estimates the
-underlying mood (emotion) and based on that it generates a respective color.
-If available, it can even set your Yeelight Bulb color
-(again based on the detected musical mood)
-"""
 import sys
 import numpy
 import argparse
@@ -25,7 +19,7 @@ fs = 8000
 FORMAT = pyaudio.paInt16
 
 """
-Load 2D image of the valence-arousal representation and define coordinates
+Load 2D image of the valence-energy representation and define coordinates
 of emotions and respective colors
 """
 img = cv2.cvtColor(cv2.imread("music_color_mood.png"),
@@ -35,20 +29,20 @@ img = cv2.cvtColor(cv2.imread("music_color_mood.png"),
 Color definition and emotion colormap definition
 """
 colors = {
-          "orange": [255, 165, 0],
-          "blue": [0, 0, 255],
-          "bluegreen": [0, 165, 255],
-          "green": [0, 205, 0],
-          "red": [255, 0, 0],
-          "yellow": [255, 255, 0],
-          "purple": [128, 0, 128],
-          "neutral": [255, 241, 224]}
+    "orange": [255, 165, 0],
+    "blue": [0, 0, 255],
+    "bluegreen": [0, 165, 255],
+    "green": [0, 205, 0],
+    "red": [255, 0, 0],
+    "yellow": [255, 255, 0],
+    "purple": [128, 0, 128],
+    "neutral": [255, 241, 224]}
 
 disgust_pos = [-0.9, 0]  # Questionable
 angry_pos = [-0.5, 0.5]
 alert_pos = [0, 0.6]  # To be discussed
 happy_pos = [0.5, 0.5]
-calm_pos = [0.4, -0.4]  # Why not [0.5, -0.5] ?
+calm_pos = [0.4, -0.4]  # maybe [0.5, -0.5]
 relaxed_pos = [0, -0.6]  # To be discussed
 sad_pos = [-0.5, -0.5]
 neu_pos = [0.0, 0.0]
@@ -56,7 +50,6 @@ neu_pos = [0.0, 0.0]
 # Each point in the valence/energy map is represented with a static color based
 # on the above mapping. All intermediate points of the emotion colormap
 # are then computed using the color_map_2d.create_2d_color_map() function:
-
 emo_map = color_map_2d.create_2d_color_map([disgust_pos,
                                             angry_pos,
                                             alert_pos,
@@ -92,7 +85,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
-
     # initialize the yeelight devices:
     bulbs = []
     if use_yeelight_bulbs:
@@ -190,12 +182,12 @@ def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
 
             h, w, _ = img.shape
             y_center, x_center = int(h / 2), int(w / 2)
-            x = x_center + int((w/2) * soft_valence)
-            y = y_center - int((h/2) * soft_energy)
+            x = x_center + int((w / 2) * soft_valence)
+            y = y_center - int((h / 2) * soft_energy)
 
             radius = 20
             emo_map_img_2 = emo_map_img.copy()
-            color = numpy.median(emo_map[y-2:y+2, x-2:x+2], axis=0).mean(axis=0)
+            color = numpy.median(emo_map[y - 2:y + 2, x - 2:x + 2], axis=0).mean(axis=0)
             emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
                                        radius,
                                        (int(color[0]), int(color[1]),
@@ -208,7 +200,7 @@ def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
             if use_yeelight_bulbs:
                 for b in bulbs:
                     if b:
-                        # attention: color is in bgr so we need to invert:
+                        # attention: color is in bgr, so we need to invert:
                         b.set_rgb(int(color[2]), int(color[1]), int(color[0]))
 
             cv2.waitKey(10)
@@ -221,18 +213,21 @@ def parse_arguments():
     record_analyze.add_argument("-d", "--devices", nargs="+",
                                 help="IPs to Yeelight device(s) to use")
     record_analyze.add_argument("-bs", "--blocksize",
-                                  type=float,
+                                type=float,
                                 choices=[0.25, 0.5, 0.75, 1],
-                                  default=1, help="Recording block size")
+                                default=1, help="Recording block size")
     record_analyze.add_argument("-fs", "--sampling-rate", type=int,
-                                  choices=[4000, 8000, 16000, 32000, 44100],
-                                  default=8000, help="Recording block size")
+                                choices=[4000, 8000, 16000, 32000, 44100],
+                                default=8000, help="Recording block size")
     return record_analyze.parse_args()
 
 
 if __name__ == "__main__":
+
+    isUsing_Yeelight = False
+
     args = parse_arguments()
-    fs = args.samplingrate
+    fs = args.sampling_rate
     if args.devices:
         devices = args.devices
     else:
@@ -240,4 +235,4 @@ if __name__ == "__main__":
     if fs != 8000:
         print("Warning! Segment classifiers have been trained on 8KHz samples."
               " Therefore results will be not optimal. ")
-    record_audio(args.blocksize, devices, True, fs)
+    record_audio(args.blocksize, devices, isUsing_Yeelight, fs)

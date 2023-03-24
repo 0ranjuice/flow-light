@@ -22,12 +22,14 @@ def get_color_for_point(point_coords, list_of_point_centers, list_of_colors):
                                              list_of_point_centers)[0]
 
     # get weights and compute new RGB value as weighted sum:
-    weights = 1 / (distances + 0.1)
+    weights = 1 / distances
+    print("weights: ", weights)
     for ic, c in enumerate(list_of_colors):
         color += (np.array(c) * weights[ic])
     color /= (np.sum(weights))
     sum_color = np.sum(color)
     required_sum_color = 600.0
+
     if color.max() * (required_sum_color / sum_color) <= 255:
         color *= (required_sum_color / sum_color)
     else:
@@ -51,19 +53,23 @@ def create_2d_color_map(list_of_points, list_of_colors, height, width):
     rgb = np.zeros((height, width, 3)).astype("uint8")
     c_x = int(width / 2)
     c_y = int(height / 2)
-    step = 5
-    win_size = int((step - 1) / 2)
-    # Standardization
+    step = 50
+    win_size = int(step / 2)
+
+    # Map real coordination to the RGB value of the symbolic points.
     for i in range(len(list_of_points)):
         rgb[c_y - int(list_of_points[i][1] * height / 2),
             c_x + int(list_of_points[i][0] * width / 2)] = list_of_colors[i]
+
+    # Convert the default standard coordinates to the color_map coordinates
     for y in range(win_size, height - win_size, step):
         for x in range(win_size, width - win_size, step):
-            x_real = (x - width / 2) / (width / 2)
-            y_real = (height / 2 - y) / (height / 2)
-            color = get_color_for_point([x_real, y_real], list_of_points,
+            # Offset processing
+            x_map = (x - width / 2) / (width / 2)
+            y_map = (height / 2 - y) / (height / 2)
+            color = get_color_for_point([x_map, y_map], list_of_points,
                                         list_of_colors)
-            rgb[y - win_size - 1: y + win_size + 1, x - win_size - 1: x + win_size + 1] = color
+            rgb[y - win_size: y + win_size, x - win_size: x + win_size] = color
     bgr = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
     return bgr
 
@@ -85,6 +91,6 @@ if __name__ == "__main__":
                                calm_pos, sad_pos],
                               [colors["red"], colors["yellow"],
                                colors["orange"], colors["green"],
-                               colors["blue"]], 200, 200)
+                               colors["blue"]], 500, 500)
     cv2.imshow('Signal', bgr)
-    ch = cv2.waitKey(10000)
+    ch = cv2.waitKey()
