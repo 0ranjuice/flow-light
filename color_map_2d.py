@@ -53,7 +53,7 @@ def create_2d_color_map(list_of_points, list_of_colors, height, width):
     rgb = np.zeros((height, width, 3)).astype("uint8")
     c_x = int(width / 2)
     c_y = int(height / 2)
-    step = 50
+    step = 4
     win_size = int(step / 2)
 
     # Map real coordination to the RGB value of the symbolic points.
