@@ -15,7 +15,7 @@ The basic steps of this demo are the following:
   - A music vs non-music classifier is applied as a first step
   - Estimation of music emotional energy and valence is achieved through a simple SVM model
   - The music classifiers have been trained on hand-crafted audio features, based on around 5000 audio training samples. 
-  - All trained models are included in this repository.
+  - All trained models are included in this repo.
    
 # Dependencies
  - Connection to the Yeelight Bulbs is achieved using this library https://yeelight.readthedocs.io/en/latest/
