@@ -23,7 +23,7 @@ def get_color_for_point(point_coords, list_of_point_centers, list_of_colors):
 
     # get weights and compute new RGB value as weighted sum:
     weights = 1 / distances
-    print("weights: ", weights)
+    # print("weights: ", weights)
     for ic, c in enumerate(list_of_colors):
         color += (np.array(c) * weights[ic])
     color /= (np.sum(weights))
