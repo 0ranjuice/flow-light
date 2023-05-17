@@ -8,7 +8,6 @@ import datetime
 import signal
 import pyaudio
 import struct
-from yeelight import Bulb
 import cv2
 import color_map_2d
 
@@ -76,24 +75,15 @@ def signal_handler(signal, frame):
     final buffer into a WAV file
     """
     # write final buffer to wav file
-    if len(all_data) > 1:
-        wavfile.write(outstr + ".wav", fs, numpy.int16(all_data))
+    """if len(all_data) > 1:
+        wavfile.write(outstr + ".wav", fs, numpy.int16(all_data))"""
     sys.exit(0)
 
 
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
-    # initialize the yeelight devices:
-    bulbs = []
-    if use_yeelight_bulbs:
-        for d in devices:
-            bulbs.append(Bulb(d))
-    try:
-        bulbs[-1].turn_on()
-    except:
-        bulbs = []
+def record_audio(block_size, devices, fs=8000):
 
     # initialize recording process
     mid_buf_size = int(fs * block_size)
@@ -197,11 +187,6 @@ def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
             cv2.imshow('Emotion Color Map', emo_map_img_2)
 
             # set yeelight bulb colors
-            if use_yeelight_bulbs:
-                for b in bulbs:
-                    if b:
-                        # attention: color is in bgr, so we need to invert:
-                        b.set_rgb(int(color[2]), int(color[1]), int(color[0]))
 
             cv2.waitKey(10)
             count += 1
@@ -210,8 +195,6 @@ def record_audio(block_size, devices, use_yeelight_bulbs=False, fs=8000):
 def parse_arguments():
     record_analyze = argparse.ArgumentParser(description="Real time "
                                                          "audio analysis")
-    record_analyze.add_argument("-d", "--devices", nargs="+",
-                                help="IPs to Yeelight device(s) to use")
     record_analyze.add_argument("-bs", "--blocksize",
                                 type=float,
                                 choices=[0.25, 0.5, 0.75, 1],
@@ -223,16 +206,9 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-
-    isUsing_Yeelight = False
-
     args = parse_arguments()
     fs = args.sampling_rate
-    if args.devices:
-        devices = args.devices
-    else:
-        devices = []
     if fs != 8000:
         print("Warning! Segment classifiers have been trained on 8KHz samples."
               " Therefore results will be not optimal. ")
-    record_audio(args.blocksize, devices, isUsing_Yeelight, fs)
+    record_audio(args.blocksize, fs)

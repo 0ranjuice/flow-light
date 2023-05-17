@@ -20,7 +20,7 @@ async def ble_connection():
     async with BleakClient(device.address) as client:
         await client.connect()
         while True:
-            try:
+            try:    
                 # Wait for keyboard input
                 input_str = input("Enter text to send to device: ")
                 # Send text to device on ENTER key press
