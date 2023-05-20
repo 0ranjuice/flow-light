@@ -10,11 +10,10 @@ import struct
 import cv2
 import color_map_2d
 
-import serial
-import time
+from bleak import BleakScanner, BleakClient
 
-arduino = serial.Serial(port="/dev/cu.usbserial-120", timeout=0)
-time.sleep(2)
+DeviceToBeFound = '10BE6E3D-88F8-913F-2644-996BBD2C4F1A'
+characteristic_uuid = '0000FFE1-0000-1000-8000-00805F9B34FB'
 
 global fs
 global all_data
@@ -82,14 +81,13 @@ def signal_handler(signal, frame):
     # write final buffer to wav file
     """if len(all_data) > 1:
         wavfile.write(outstr + ".wav", fs, numpy.int16(all_data))"""
-    arduino.close()
     sys.exit(0)
 
 
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def record_audio(block_size, devices, fs=8000):
+def record_audio(block_size, device, fs=8000):
     # initialize recording process
     mid_buf_size = int(fs * block_size)
     pa = pyaudio.PyAudio()
@@ -115,6 +113,7 @@ def record_audio(block_size, devices, fs=8000):
      mt_win_va, mt_step_va, st_win_va, st_step_va, _] = \
         aT.load_model("valence")
 
+    device.connect()
     while 1:
         block = stream.read(mid_buf_size)
         count_b = len(block) / 2
@@ -194,7 +193,8 @@ def record_audio(block_size, devices, fs=8000):
             G = int(color[1])
             B = int(color[2])
             data = f"{R},{G},{B}\n"
-            arduino.write(data.encode())
+            # Send text to device on ENTER key press
+            device.write_gatt_char(characteristic_uuid, data.encode())
 
             # set yeelight bulb colors
 
@@ -221,5 +221,17 @@ if __name__ == "__main__":
     if fs != 8000:
         print("Warning! Segment classifiers have been trained on 8KHz samples."
               " Therefore results will be not optimal. ")
-    record_audio(args.blocksize, fs)
-    arduino.close()
+
+    devices = await BleakScanner.discover(timeout=5)
+    device = None
+
+    for d in devices:
+        if d.address == DeviceToBeFound:
+            print("Target device detected!")
+            print("Device: {}".format(d.name))
+            print("Address: {}.".format(d.address))
+            device = d
+            break
+
+    peripheral = BleakClient(device.address)
+    record_audio(args.blocksize, peripheral, fs)
