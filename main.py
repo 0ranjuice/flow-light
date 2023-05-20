@@ -1,7 +1,6 @@
 import sys
 import numpy
 import argparse
-import scipy.io.wavfile as wavfile
 from pyAudioAnalysis.MidTermFeatures import mid_feature_extraction as mF
 from pyAudioAnalysis import audioTrainTest as aT
 import datetime
@@ -10,6 +9,12 @@ import pyaudio
 import struct
 import cv2
 import color_map_2d
+
+import serial
+import time
+
+arduino = serial.Serial(port="/dev/cu.usbserial-120", timeout=0)
+time.sleep(2)
 
 global fs
 global all_data
@@ -77,6 +82,7 @@ def signal_handler(signal, frame):
     # write final buffer to wav file
     """if len(all_data) > 1:
         wavfile.write(outstr + ".wav", fs, numpy.int16(all_data))"""
+    arduino.close()
     sys.exit(0)
 
 
@@ -84,7 +90,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 def record_audio(block_size, devices, fs=8000):
-
     # initialize recording process
     mid_buf_size = int(fs * block_size)
     pa = pyaudio.PyAudio()
@@ -136,7 +141,7 @@ def record_audio(block_size, devices, fs=8000):
             if prob[class_names.index("silence")] > 0.8:
                 soft_valence = 0
                 soft_energy = 0
-                print("Silence")
+                # print("Silence")
             else:
                 # extract features for music mood
                 [f_2, _, _] = mF(x, fs, round(fs * mt_win_en),
@@ -164,7 +169,7 @@ def record_audio(block_size, devices, fs=8000):
                 soft_valence = p_val[class_names_valence.index("positive")] - \
                                p_val[class_names_valence.index("negative")]
 
-                print(win_class, win_class_energy, win_class_valence,
+                print(win_class_energy, win_class_valence,
                       soft_valence, soft_energy)
 
             all_data += mid_buf
@@ -185,6 +190,11 @@ def record_audio(block_size, devices, fs=8000):
             emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
                                        radius, (255, 255, 255), 2)
             cv2.imshow('Emotion Color Map', emo_map_img_2)
+            R = int(color[0])
+            G = int(color[1])
+            B = int(color[2])
+            data = f"{R},{G},{B}\n"
+            arduino.write(data.encode())
 
             # set yeelight bulb colors
 
@@ -212,3 +222,4 @@ if __name__ == "__main__":
         print("Warning! Segment classifiers have been trained on 8KHz samples."
               " Therefore results will be not optimal. ")
     record_audio(args.blocksize, fs)
+    arduino.close()
