@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import numpy
 import argparse
@@ -87,7 +88,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def record_audio(block_size, device, fs=8000):
+async def record_audio(block_size, device, fs=8000):
     # initialize recording process
     mid_buf_size = int(fs * block_size)
     pa = pyaudio.PyAudio()
@@ -113,93 +114,93 @@ def record_audio(block_size, device, fs=8000):
      mt_win_va, mt_step_va, st_win_va, st_step_va, _] = \
         aT.load_model("valence")
 
-    device.connect()
-    while 1:
-        block = stream.read(mid_buf_size)
-        count_b = len(block) / 2
-        format = "%dh" % (count_b)
-        shorts = struct.unpack(format, block)
-        cur_win = list(shorts)
-        mid_buf = mid_buf + cur_win
-        del cur_win
-        if len(mid_buf) >= 5 * fs:
-            # data-driven time
-            x = numpy.int16(mid_buf)
-            seg_len = len(x)
+    async with BleakClient(device.address) as client:
+        await client.connect()
 
-            # extract features
-            # We are using the signal length as midterm window and step,
-            # in order to guarantee a midterm feature sequence of len 1
-            [mt_f, _, _] = mF(x, fs, seg_len, seg_len, round(fs * st_win),
-                              round(fs * st_step))
-            fv = (mt_f[:, 0] - mu) / std
+        while 1:
+            block = stream.read(mid_buf_size)
+            count_b = len(block) / 2
+            format = "%dh" % (count_b)
+            shorts = struct.unpack(format, block)
+            cur_win = list(shorts)
+            mid_buf = mid_buf + cur_win
+            del cur_win
+            if len(mid_buf) >= 5 * fs:
+                # data-driven time
+                x = numpy.int16(mid_buf)
+                seg_len = len(x)
 
-            # classify vector:
-            [res, prob] = aT.classifier_wrapper(classifier, "svm_rbf", fv)
-            win_class = class_names[int(res)]
-            if prob[class_names.index("silence")] > 0.8:
-                soft_valence = 0
-                soft_energy = 0
-                # print("Silence")
-            else:
-                # extract features for music mood
-                [f_2, _, _] = mF(x, fs, round(fs * mt_win_en),
-                                 round(fs * mt_step_en), round(fs * st_win_en),
-                                 round(fs * st_step_en))
-                [f_3, _, _] = mF(x, fs, round(fs * mt_win_va),
-                                 round(fs * mt_step_va), round(fs * st_win_va),
-                                 round(fs * st_step_va))
-                # normalize feature vector
-                fv_2 = (f_2[:, 0] - mu_energy) / std_energy
-                fv_3 = (f_3[:, 0] - mu_valence) / std_valence
+                # extract features
+                # We are using the signal length as midterm window and step,
+                # in order to guarantee a midterm feature sequence of len 1
+                [mt_f, _, _] = mF(x, fs, seg_len, seg_len, round(fs * st_win),
+                                  round(fs * st_step))
+                fv = (mt_f[:, 0] - mu) / std
 
-                [res_energy, p_en] = aT.classifier_wrapper(clf_energy,
-                                                           "svm_rbf",
-                                                           fv_2)
-                win_class_energy = class_names_energy[int(res_energy)]
+                # classify vector:
+                [res, prob] = aT.classifier_wrapper(classifier, "svm_rbf", fv)
+                win_class = class_names[int(res)]
+                if prob[class_names.index("silence")] > 0.8:
+                    soft_valence = 0
+                    soft_energy = 0
+                    # print("Silence")
+                else:
+                    # extract features for music mood
+                    [f_2, _, _] = mF(x, fs, round(fs * mt_win_en),
+                                     round(fs * mt_step_en), round(fs * st_win_en),
+                                     round(fs * st_step_en))
+                    [f_3, _, _] = mF(x, fs, round(fs * mt_win_va),
+                                     round(fs * mt_step_va), round(fs * st_win_va),
+                                     round(fs * st_step_va))
+                    # normalize feature vector
+                    fv_2 = (f_2[:, 0] - mu_energy) / std_energy
+                    fv_3 = (f_3[:, 0] - mu_valence) / std_valence
 
-                [res_valence, p_val] = aT.classifier_wrapper(clf_valence,
-                                                             "svm_rbf",
-                                                             fv_3)
-                win_class_valence = class_names_valence[int(res_valence)]
+                    [res_energy, p_en] = aT.classifier_wrapper(clf_energy,
+                                                               "svm_rbf",
+                                                               fv_2)
+                    win_class_energy = class_names_energy[int(res_energy)]
 
-                soft_energy = p_en[class_names_energy.index("high")] - \
-                              p_en[class_names_energy.index("low")]
-                soft_valence = p_val[class_names_valence.index("positive")] - \
-                               p_val[class_names_valence.index("negative")]
+                    [res_valence, p_val] = aT.classifier_wrapper(clf_valence,
+                                                                 "svm_rbf",
+                                                                 fv_3)
+                    win_class_valence = class_names_valence[int(res_valence)]
 
-                print(win_class_energy, win_class_valence,
-                      soft_valence, soft_energy)
+                    soft_energy = p_en[class_names_energy.index("high")] - \
+                                  p_en[class_names_energy.index("low")]
+                    soft_valence = p_val[class_names_valence.index("positive")] - \
+                                   p_val[class_names_valence.index("negative")]
 
-            all_data += mid_buf
-            mid_buf = []
+                    print(win_class_energy, win_class_valence,
+                          soft_valence, soft_energy)
 
-            h, w, _ = img.shape
-            y_center, x_center = int(h / 2), int(w / 2)
-            x = x_center + int((w / 2) * soft_valence)
-            y = y_center - int((h / 2) * soft_energy)
+                all_data += mid_buf
+                mid_buf = []
 
-            radius = 20
-            emo_map_img_2 = emo_map_img.copy()
-            color = numpy.median(emo_map[y - 2:y + 2, x - 2:x + 2], axis=0).mean(axis=0)
-            emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
-                                       radius,
-                                       (int(color[0]), int(color[1]),
-                                        int(color[2])), -1)
-            emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
-                                       radius, (255, 255, 255), 2)
-            cv2.imshow('Emotion Color Map', emo_map_img_2)
-            R = int(color[0])
-            G = int(color[1])
-            B = int(color[2])
-            data = f"{R},{G},{B}\n"
-            # Send text to device on ENTER key press
-            device.write_gatt_char(characteristic_uuid, data.encode())
+                h, w, _ = img.shape
+                y_center, x_center = int(h / 2), int(w / 2)
+                x = x_center + int((w / 2) * soft_valence)
+                y = y_center - int((h / 2) * soft_energy)
 
-            # set yeelight bulb colors
+                radius = 20
+                emo_map_img_2 = emo_map_img.copy()
+                color = numpy.median(emo_map[y - 2:y + 2, x - 2:x + 2], axis=0).mean(axis=0)
+                emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
+                                           radius,
+                                           (int(color[0]), int(color[1]),
+                                            int(color[2])), -1)
+                emo_map_img_2 = cv2.circle(emo_map_img_2, (x, y),
+                                           radius, (255, 255, 255), 2)
+                cv2.imshow('Emotion Color Map', emo_map_img_2)
+                R = int(color[0])
+                G = int(color[1])
+                B = int(color[2])
+                data = f"{R},{G},{B}\n"
 
-            cv2.waitKey(10)
-            count += 1
+                await client.write_gatt_char(characteristic_uuid, data.encode())
+
+                cv2.waitKey(10)
+                count += 1
 
 
 def parse_arguments():
@@ -221,10 +222,8 @@ if __name__ == "__main__":
     if fs != 8000:
         print("Warning! Segment classifiers have been trained on 8KHz samples."
               " Therefore results will be not optimal. ")
-
-    devices = await BleakScanner.discover(timeout=5)
     device = None
-
+    devices = asyncio.run(BleakScanner.discover())
     for d in devices:
         if d.address == DeviceToBeFound:
             print("Target device detected!")
@@ -233,5 +232,4 @@ if __name__ == "__main__":
             device = d
             break
 
-    peripheral = BleakClient(device.address)
-    record_audio(args.blocksize, peripheral, fs)
+    asyncio.run(record_audio(args.blocksize, device, fs))
